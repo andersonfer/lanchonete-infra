@@ -1,0 +1,14 @@
+[
+    {
+        "Key": "database/terraform.tfstate",
+        "VersionId": "aPC8nVxC7AvsoNAtJz3l9RrD5BWXy82G"
+    },
+    {
+        "Key": "kubernetes/terraform.tfstate",
+        "VersionId": "FoKs4yw_MXzE69OhnpCdx56nltPf9pNQ"
+    },
+    {
+        "Key": "lambda/terraform.tfstate",
+        "VersionId": "UjMlltnHv2J0wwb_uVc7v6nDHEG7dFa5"
+    }
+]

@@ -1,0 +1,53 @@
+# Gera senha aleatória para DocumentDB
+resource "random_password" "documentdb_pagamento" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()_+=<>?{}|~"
+}
+
+# DocumentDB Cluster - Pagamento
+resource "aws_docdb_cluster" "pagamento" {
+  cluster_identifier     = "${local.prefix}-pagamento-docdb"
+  engine                 = "docdb"
+  engine_version         = var.docdb_engine_version
+  master_username        = "dbadmin"
+  master_password        = random_password.documentdb_pagamento.result
+  db_subnet_group_name   = aws_docdb_subnet_group.principal.name
+  vpc_security_group_ids = [aws_security_group.documentdb.id]
+
+  # Backup e snapshot
+  backup_retention_period      = var.backup_retention_period
+  preferred_backup_window      = "03:00-04:00"
+  preferred_maintenance_window = "mon:04:00-mon:05:00"
+  skip_final_snapshot          = var.skip_final_snapshot
+
+  # Configurações adicionais
+  enabled_cloudwatch_logs_exports = ["audit", "profiler"]
+  storage_encrypted               = false
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name    = "${local.prefix}-pagamento-docdb"
+      Service = "pagamento"
+    }
+  )
+}
+
+# DocumentDB Instance - Pagamento (Single Instance)
+resource "aws_docdb_cluster_instance" "pagamento" {
+  identifier         = "${local.prefix}-pagamento-docdb-instance"
+  cluster_identifier = aws_docdb_cluster.pagamento.id
+  instance_class     = var.docdb_instance_class
+
+  # Auto minor version upgrade
+  auto_minor_version_upgrade = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name    = "${local.prefix}-pagamento-docdb-instance"
+      Service = "pagamento"
+    }
+  )
+}
