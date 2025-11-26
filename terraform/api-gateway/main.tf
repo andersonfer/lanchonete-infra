@@ -131,7 +131,7 @@ resource "aws_api_gateway_integration" "clientes_root_integration" {
 
   type                    = "HTTP_PROXY"
   integration_http_method = "ANY"
-  uri                     = "${var.clientes_service_url}/clientes"
+  uri                     = "${var.clientes_service_url}/"
 }
 
 # Resource /clientes/{proxy+}
@@ -162,7 +162,7 @@ resource "aws_api_gateway_integration" "clientes_integration" {
 
   type                    = "HTTP_PROXY"
   integration_http_method = "ANY"
-  uri                     = "${var.clientes_service_url}/clientes/{proxy}"
+  uri                     = "${var.clientes_service_url}/{proxy}"
 
   request_parameters = {
     "integration.request.path.proxy" = "method.request.path.proxy"
@@ -197,7 +197,7 @@ resource "aws_api_gateway_integration" "pedidos_root_integration" {
 
   type                    = "HTTP_PROXY"
   integration_http_method = "ANY"
-  uri                     = "${var.pedidos_service_url}/pedidos"
+  uri                     = "${var.pedidos_service_url}/"
 }
 
 # Resource /pedidos/{proxy+}
@@ -228,7 +228,7 @@ resource "aws_api_gateway_integration" "pedidos_integration" {
 
   type                    = "HTTP_PROXY"
   integration_http_method = "ANY"
-  uri                     = "${var.pedidos_service_url}/pedidos/{proxy}"
+  uri                     = "${var.pedidos_service_url}/{proxy}"
 
   request_parameters = {
     "integration.request.path.proxy" = "method.request.path.proxy"
@@ -263,7 +263,7 @@ resource "aws_api_gateway_integration" "cozinha_root_integration" {
 
   type                    = "HTTP_PROXY"
   integration_http_method = "ANY"
-  uri                     = "${var.cozinha_service_url}/cozinha"
+  uri                     = "${var.cozinha_service_url}/"
 }
 
 # Resource /cozinha/{proxy+}
@@ -294,7 +294,7 @@ resource "aws_api_gateway_integration" "cozinha_integration" {
 
   type                    = "HTTP_PROXY"
   integration_http_method = "ANY"
-  uri                     = "${var.cozinha_service_url}/cozinha/{proxy}"
+  uri                     = "${var.cozinha_service_url}/{proxy}"
 
   request_parameters = {
     "integration.request.path.proxy" = "method.request.path.proxy"
@@ -329,7 +329,7 @@ resource "aws_api_gateway_integration" "pagamento_root_integration" {
 
   type                    = "HTTP_PROXY"
   integration_http_method = "ANY"
-  uri                     = "${var.pagamento_service_url}/pagamento"
+  uri                     = "${var.pagamento_service_url}/"
 }
 
 # Resource /pagamento/{proxy+}
@@ -360,7 +360,7 @@ resource "aws_api_gateway_integration" "pagamento_integration" {
 
   type                    = "HTTP_PROXY"
   integration_http_method = "ANY"
-  uri                     = "${var.pagamento_service_url}/pagamento/{proxy}"
+  uri                     = "${var.pagamento_service_url}/{proxy}"
 
   request_parameters = {
     "integration.request.path.proxy" = "method.request.path.proxy"
