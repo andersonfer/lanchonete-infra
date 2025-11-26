@@ -1,228 +1,95 @@
-# Ajustes Necessários para Infraestrutura Repetível
+# Ajustes para Infraestrutura Repetível
 
-Este documento lista todos os ajustes manuais realizados durante o deploy da infraestrutura que precisam ser incorporados ao código para tornar o processo 100% automatizado.
-
----
-
-## 1. Arquivos Modificados (não commitados)
-
-### 1.1 `k8s/shared-rabbitmq-statefulset.yaml`
-
-**Problema**: StorageClass "standard" não existe no EKS (é do Minikube). EKS usa "gp2".
-
-**Solução aplicada manualmente**:
-- Alterado `storageClassName: standard` para `storageClassName: gp2`
-- Alterado volume de `persistentVolumeClaim` para `emptyDir: {}` (simplificação para PoC)
-
-**Ação necessária**: Commitar a alteração ou criar arquivo separado para AWS.
+Este documento lista os ajustes realizados para tornar o processo de deploy 100% automatizado e repetível.
 
 ---
 
-### 1.2 `terraform/kubernetes/main.tf`
+## ✅ Ajustes Concluídos
 
-**Problema**: Faltava regra de Security Group para permitir tráfego na porta 8080 (usada pelos Services LoadBalancer).
+### 1. `k8s/shared-rabbitmq-statefulset.yaml`
+- Alterado `storageClassName: standard` para `storageClassName: gp2` (EKS)
+- Alterado volume para `emptyDir: {}` (simplificação para PoC)
 
-**Solução aplicada manualmente**: Adicionada regra `lb_http` para porta 8080.
+### 2. `terraform/kubernetes/main.tf`
+- Adicionada regra de Security Group `lb_http` para porta 8080
 
-**Ação necessária**: Commitar a alteração.
-
----
-
-### 1.3 `k8s/service.yaml` (todos os 4 microserviços)
-
-**Problema**: Services estavam como `ClusterIP`, mas para expor externamente sem AWS Load Balancer Controller, precisam ser `LoadBalancer`.
-
-**Solução aplicada manualmente**:
+### 3. `k8s/service.yaml` (4 repositórios)
 - Alterado `type: ClusterIP` para `type: LoadBalancer`
-- Alterado `port: 8080` para `port: 80` (padrão HTTP)
+- Alterado `port: 8080` para `port: 80`
 
-**Ação necessária**: Commitar as alterações nos 4 repositórios:
-- lanchonete-clientes
-- lanchonete-pagamento
-- lanchonete-pedidos
-- lanchonete-cozinha
+### 4. `k8s/.env.secrets`
+- Alinhado RabbitMQ para `admin/admin123`
 
----
+### 5. `scripts/create-secrets.sh`
+- Atualizado para ler senhas do Terraform automaticamente
 
-## 2. Ajustes Manuais via kubectl/AWS CLI
+### 6. `terraform/api-gateway/main.tf`
+- Corrigido path duplicado nas integrações HTTP
+- Antes: `${var.clientes_service_url}/clientes/{proxy}`
+- Depois: `${var.clientes_service_url}/{proxy}`
 
-### 2.1 Secrets do Kubernetes
-
-**Problema**: As senhas dos bancos RDS são geradas aleatoriamente pelo Terraform, mas os secrets do k8s estavam com senhas hardcoded.
-
-**Solução aplicada manualmente**:
-```bash
-# Extrair senhas do Terraform state
-cd terraform/database && terraform output -json
-
-# Recriar secrets com senhas corretas
-kubectl delete secret mysql-clientes-secret mysql-pedidos-secret mysql-cozinha-secret
-kubectl create secret generic mysql-clientes-secret --from-literal=...
-```
-
-**Ação necessária**: Criar script que:
-1. Lê as senhas do `terraform output`
-2. Cria os secrets automaticamente
-
-Ou usar **External Secrets Operator** / **AWS Secrets Manager** para sincronizar.
+### 7. Scripts de automação criados
+- `scripts/deploy-infra.sh` - Deploy completo da infraestrutura
+- `scripts/update-lambda-url.sh` - Atualiza Lambda com URL do clientes
 
 ---
 
-### 2.2 RabbitMQ Secret
-
-**Problema**: ConfigMaps dos serviços usam `RABBITMQ_USERNAME: "admin"`, mas o secret original usava `guest`.
-
-**Solução aplicada manualmente**:
-```bash
-kubectl delete secret rabbitmq-secret
-kubectl create secret generic rabbitmq-secret \
-  --from-literal=RABBITMQ_DEFAULT_USER=admin \
-  --from-literal=RABBITMQ_DEFAULT_PASS=admin123
-```
-
-**Ação necessária**:
-- Alinhar credenciais entre `k8s/.env.secrets` e os ConfigMaps dos serviços
-- Ou usar valores consistentes em ambos
-
----
-
-### 2.3 Lambda - CLIENTES_SERVICE_URL
-
-**Problema**: A Lambda foi provisionada antes dos Load Balancers existirem, então `CLIENTES_SERVICE_URL` ficou vazia.
-
-**Solução aplicada manualmente**:
-```bash
-aws lambda update-function-configuration \
-  --function-name lanchonete-auth-lambda \
-  --environment 'Variables={...,CLIENTES_SERVICE_URL=http://<elb-dns>}'
-```
-
-**Ação necessária**: Criar dependência correta no Terraform:
-1. Opção A: Deploy da Lambda DEPOIS dos microserviços (workflow separado)
-2. Opção B: Usar Service Discovery (Cloud Map) ao invés de URLs fixas
-3. Opção C: Criar API Gateway primeiro como entry point único
-
----
-
-## 3. Integração API Gateway com Microserviços
-
-### 3.1 Problema Identificado
-
-O API Gateway está retornando erro 500 ao tentar acessar os endpoints dos microserviços, mesmo com token válido:
-
-```bash
-# Endpoint público funciona:
-curl -X POST "$API_URL/auth/identificar" -d '{"cpf":"12345678900"}'
-# Retorna: {"accessToken":"...", "tipo":"IDENTIFICADO"}
-
-# Endpoints protegidos falham:
-curl "$API_URL/clientes/actuator/health" -H "Authorization: $TOKEN"
-# Retorna: {"mensagem":"Erro interno do servidor","status":500}
-
-# Mas acessando direto no Load Balancer funciona:
-curl "http://<elb-dns>/actuator/health"
-# Retorna: {"status":"UP",...}
-```
-
-### 3.2 Causa Provável
-
-A integração HTTP do API Gateway com os microserviços está com problema de configuração. Possíveis causas:
-- Path mapping incorreto (duplicação de path)
-- Configuração de integração HTTP_PROXY
-- Timeout ou headers não propagados
-
-### 3.3 Ação Necessária
-
-Investigar o módulo `terraform/api-gateway/main.tf`:
-1. Verificar se o path está sendo duplicado (ex: `/clientes/actuator/health` virando `/clientes/clientes/actuator/health`)
-2. Verificar configuração de `integration_http_method`
-3. Verificar se `uri` da integração está correto
-4. Adicionar logs no API Gateway para debug
-
-### 3.4 Teste de Diagnóstico
-
-```bash
-# Verificar como o API Gateway está montando a URL
-aws apigateway get-integration \
-  --rest-api-id <api-id> \
-  --resource-id <resource-id> \
-  --http-method GET
-```
-
----
-
-## 4. Ordem de Provisionamento
-
-A ordem correta de provisionamento deve ser:
+## 📋 Ordem de Provisionamento
 
 ```
 1. terraform/backend      (S3 + DynamoDB)
 2. terraform/ecr          (Container Registry)
 3. terraform/kubernetes   (EKS Cluster)
 4. terraform/database     (RDS MySQL x3)
-5. kubectl apply          (Secrets, RabbitMQ, MongoDB)
+5. kubectl: secrets, RabbitMQ, MongoDB
 6. Build & Push Images    (4 microserviços)
-7. kubectl apply          (Deployments, Services)
+7. kubectl: Deployments, Services
 8. terraform/auth         (Cognito)
-9. terraform/lambda       (com CLIENTES_SERVICE_URL dos LBs)
+9. terraform/lambda       (com URL vazia)
 10. terraform/api-gateway (com URLs dos LBs)
+11. update-lambda-url.sh  (atualiza Lambda)
 ```
 
-**Ação necessária**: Criar script de orquestração ou pipeline que respeite essa ordem.
+---
+
+## 🚀 Como Fazer Deploy
+
+### Deploy Completo (nova infraestrutura)
+
+```bash
+# 1. Infraestrutura base (Terraform + k8s compartilhado)
+./scripts/01-deploy-infra.sh
+
+# 2. Build e push das imagens (todos os 4 serviços)
+./scripts/02-build-and-push.sh
+
+# 3. Aplicar deployments no Kubernetes
+./scripts/03-deploy-k8s.sh
+
+# 4. Aguardar Load Balancers (1-2 minutos)
+kubectl get svc -w
+
+# 5. Aplicar API Gateway (lê URLs automaticamente)
+./scripts/04-apply-api-gateway.sh
+
+# 6. Atualizar Lambda com URL do clientes
+./scripts/05-update-lambda-url.sh
+```
 
 ---
 
-## 5. Scripts Recomendados
+## ⚠️ Limitações Conhecidas
 
-### 5.1 `scripts/deploy-infra.sh`
-Script que executa todos os Terraform na ordem correta.
+### AWS Load Balancer Controller
+- Não instalado no EKS, então Ingress não funciona
+- Usamos Services LoadBalancer que criam Classic ELBs
+- Para usar ALB Ingress, instalar AWS LB Controller via Helm
 
-### 5.2 `scripts/create-k8s-secrets.sh`
-Script que lê senhas do Terraform e cria secrets no k8s.
+### Dependência Lambda <-> Services
+- Lambda precisa da URL do clientes, mas serviços precisam existir primeiro
+- Solução atual: deploy em 2 fases + script `update-lambda-url.sh`
 
-### 5.3 `scripts/deploy-services.sh`
-Script que faz build, push e apply dos 4 microserviços.
-
-### 5.4 `scripts/update-lambda-urls.sh`
-Script que atualiza a Lambda com as URLs dos Load Balancers.
-
----
-
-## 6. Problemas Arquiteturais a Resolver
-
-### 6.1 AWS Load Balancer Controller
-O EKS não tem o AWS Load Balancer Controller instalado, então Ingress não funciona.
-
-**Opções**:
-- A) Continuar usando Services LoadBalancer (atual) - cria Classic ELBs
-- B) Instalar AWS LB Controller via Helm - permite usar ALB Ingress
-- C) Usar NodePort + API Gateway direto
-
-### 6.2 Secrets Management
-Atualmente secrets são criados manualmente.
-
-**Opções**:
-- A) External Secrets Operator + AWS Secrets Manager
-- B) Sealed Secrets
-- C) Script que sincroniza Terraform outputs -> k8s secrets
-
-### 6.3 Dependência Circular Lambda <-> Services
-Lambda precisa da URL do serviço de clientes, mas serviços precisam existir primeiro.
-
-**Opções**:
-- A) Deploy em 2 fases (infra básica -> serviços -> lambda/api-gateway)
-- B) Usar Service Discovery (AWS Cloud Map)
-- C) Usar DNS fixo com Route53
-
----
-
-## 7. Checklist para Próximo Deploy
-
-- [ ] Commitar alterações em `k8s/shared-rabbitmq-statefulset.yaml`
-- [ ] Commitar alterações em `terraform/kubernetes/main.tf`
-- [ ] Commitar alterações em `k8s/service.yaml` (4 repos)
-- [ ] Criar script `create-k8s-secrets.sh` que lê do Terraform
-- [ ] Alinhar credenciais RabbitMQ (admin/admin123)
-- [ ] Corrigir integração API Gateway -> Microserviços
-- [ ] Documentar ordem de provisionamento
-- [ ] Criar script de deploy unificado
+### Secrets
+- Senhas RDS são geradas pelo Terraform
+- Script `create-secrets.sh` lê do Terraform e cria no k8s
+- Alternativa futura: External Secrets Operator + AWS Secrets Manager
