@@ -22,15 +22,23 @@ Este documento lista os ajustes realizados para tornar o processo de deploy 100%
 
 ### 5. `scripts/create-secrets.sh`
 - Atualizado para ler senhas do Terraform automaticamente
+- Adicionado `MYSQL_PORT="3306"` nos secrets MySQL (necessário para deployments)
 
 ### 6. `terraform/api-gateway/main.tf`
 - Corrigido path duplicado nas integrações HTTP
 - Antes: `${var.clientes_service_url}/clientes/{proxy}`
 - Depois: `${var.clientes_service_url}/{proxy}`
 
-### 7. Scripts de automação criados
-- `scripts/deploy-infra.sh` - Deploy completo da infraestrutura
-- `scripts/update-lambda-url.sh` - Atualiza Lambda com URL do clientes
+### 7. `scripts/03-deploy-k8s.sh`
+- Atualizado para substituir automaticamente `{{ECR_*}}` nos deployment.yaml
+- Obtém ACCOUNT_ID via AWS CLI e constrói URL do ECR dinamicamente
+
+### 8. Scripts de automação criados/renomeados
+- `scripts/01-deploy-infra.sh` - Deploy completo da infraestrutura
+- `scripts/02-build-and-push.sh` - Build e push das imagens Docker
+- `scripts/03-deploy-k8s.sh` - Deploy dos microserviços no Kubernetes
+- `scripts/04-apply-api-gateway.sh` - Aplica API Gateway com URLs dos LBs
+- `scripts/05-update-lambda-url.sh` - Atualiza Lambda com URL do clientes
 
 ---
 
