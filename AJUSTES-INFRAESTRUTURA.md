@@ -25,15 +25,26 @@ Este documento lista os ajustes realizados para tornar o processo de deploy 100%
 - Adicionado `MYSQL_PORT="3306"` nos secrets MySQL (necessário para deployments)
 
 ### 6. `terraform/api-gateway/main.tf`
-- Corrigido path duplicado nas integrações HTTP
-- Antes: `${var.clientes_service_url}/clientes/{proxy}`
-- Depois: `${var.clientes_service_url}/{proxy}`
+- Corrigido URIs de integração HTTP para incluir o path do microserviço
+- Antes: `${var.pedidos_service_url}/` → roteia para `/`
+- Depois: `${var.pedidos_service_url}/pedidos` → roteia para `/pedidos`
+- Aplicado para todos os 4 microserviços (clientes, pedidos, cozinha, pagamento)
 
-### 7. `scripts/03-deploy-k8s.sh`
+### 7. `lanchonete-pedidos/k8s/deployment.yaml`
+- Corrigido CLIENTES_SERVICE_URL de porta 8080 para porta 80
+- Antes: `http://clientes-service:8080`
+- Depois: `http://clientes-service:80`
+
+### 8. `lanchonete-cozinha/k8s/configmap.yaml`
+- Corrigido PEDIDOS_SERVICE_URL de porta 8080 para porta 80
+- Antes: `http://pedidos-service:8080`
+- Depois: `http://pedidos-service:80`
+
+### 9. `scripts/03-deploy-k8s.sh`
 - Atualizado para substituir automaticamente `{{ECR_*}}` nos deployment.yaml
 - Obtém ACCOUNT_ID via AWS CLI e constrói URL do ECR dinamicamente
 
-### 8. Scripts de automação criados/renomeados
+### 10. Scripts de automação criados/renomeados
 - `scripts/01-deploy-infra.sh` - Deploy completo da infraestrutura
 - `scripts/02-build-and-push.sh` - Build e push das imagens Docker
 - `scripts/03-deploy-k8s.sh` - Deploy dos microserviços no Kubernetes
