@@ -11,7 +11,7 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: standard
+  storageClassName: gp2
 
 ---
 # Service para RabbitMQ (Headless Service)
@@ -121,5 +121,4 @@ spec:
           timeoutSeconds: 5
       volumes:
       - name: rabbitmq-data
-        persistentVolumeClaim:
-          claimName: shared-rabbitmq-pvc
+        emptyDir: {}

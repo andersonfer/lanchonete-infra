@@ -163,15 +163,29 @@ resource "aws_security_group_rule" "nodeport_autoatendimento" {
 # Regra para NodePort do Pagamento (porta 30081)
 resource "aws_security_group_rule" "nodeport_pagamento" {
   depends_on = [data.aws_security_group.eks_node_group]
-  
+
   type              = "ingress"
   from_port         = 30081
   to_port           = 30081
   protocol          = "tcp"
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = data.aws_security_group.eks_node_group.id
-  
+
   description = "Acesso externo para NodePort do pagamento"
+}
+
+# Regra para permitir tráfego HTTP de Load Balancers
+resource "aws_security_group_rule" "lb_http" {
+  depends_on = [data.aws_security_group.eks_node_group]
+
+  type              = "ingress"
+  from_port         = 8080
+  to_port           = 8080
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = data.aws_security_group.eks_node_group.id
+
+  description = "Acesso HTTP para Services LoadBalancer"
 }
 
 # ===== OUTPUTS PARA PIPELINE CI/CD =====
