@@ -64,7 +64,7 @@ echo ""
 API_URL=$(terraform output -raw api_gateway_url 2>/dev/null || echo "")
 if [ -n "$API_URL" ]; then
     echo "🌐 URL do API Gateway: $API_URL"
-    echo ""
-    echo "🧪 Para testar:"
-    echo "   curl -X POST $API_URL/auth/identificar -H 'Content-Type: application/json' -d '{\"cpf\":\"12345678900\"}'"
 fi
+
+echo ""
+echo "Próximo passo: ./scripts/05-update-lambda-url.sh"

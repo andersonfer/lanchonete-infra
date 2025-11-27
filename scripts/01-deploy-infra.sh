@@ -133,34 +133,9 @@ echo "=========================================="
 # 5. Cognito (Auth)
 apply_terraform "auth"
 
-# 6. Lambda (com URL vazia por enquanto)
-apply_terraform "lambda" '-var="clientes_service_url="'
-
-echo "=========================================="
-echo "  INFORMAÇÕES IMPORTANTES"
-echo "=========================================="
-
-echo ""
-echo "📋 Próximos passos manuais:"
-echo ""
-echo "1. Fazer build e push das imagens dos microserviços:"
-echo "   ./scripts/build-and-push.sh"
-echo ""
-echo "2. Aplicar deployments dos microserviços (em cada repo):"
-echo "   kubectl apply -f k8s/"
-echo ""
-echo "3. Aguardar Load Balancers ficarem disponíveis:"
-echo "   kubectl get svc"
-echo ""
-echo "4. Aplicar API Gateway com URLs dos LBs:"
-echo "   cd terraform/api-gateway && terraform apply \\"
-echo "     -var=\"clientes_service_url=http://<clientes-lb>\" \\"
-echo "     -var=\"pagamento_service_url=http://<pagamento-lb>\" \\"
-echo "     -var=\"pedidos_service_url=http://<pedidos-lb>\" \\"
-echo "     -var=\"cozinha_service_url=http://<cozinha-lb>\""
-echo ""
-echo "5. Atualizar Lambda com URL do clientes:"
-echo "   ./scripts/update-lambda-url.sh"
-echo ""
+# 6. Lambda (URL do clientes será atualizada depois via 05-update-lambda-url.sh)
+apply_terraform "lambda"
 
 echo "✅ Infraestrutura base provisionada com sucesso!"
+echo ""
+echo "Próximo passo: ./scripts/02-build-and-push.sh"

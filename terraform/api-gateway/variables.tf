@@ -32,7 +32,7 @@ variable "pagamento_service_url" {
 
 locals {
   common_tags = {
-    Projeto = var.nome_projeto
+    Projeto   = var.nome_projeto
     Terraform = "true"
   }
 }

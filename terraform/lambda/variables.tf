@@ -13,6 +13,7 @@ variable "regiao" {
 variable "clientes_service_url" {
   description = "URL do LoadBalancer do serviço de clientes (ex: http://xxx.elb.amazonaws.com:8080)"
   type        = string
+  default     = ""
 }
 
 locals {

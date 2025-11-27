@@ -93,7 +93,4 @@ echo "📦 PODS:"
 kubectl get pods -o wide
 
 echo ""
-echo "⏳ Aguarde os Load Balancers ficarem ativos (1-2 minutos)..."
-echo "   Use: kubectl get svc -w"
-echo ""
-echo "📋 Próximo passo: ./scripts/04-apply-api-gateway.sh"
+echo "Próximo passo: ./scripts/04-apply-api-gateway.sh"
