@@ -76,7 +76,7 @@ configure_kubectl() {
 apply_k8s_resources() {
     echo "☸️  Aplicando recursos Kubernetes..."
 
-    # Criar secrets
+    # Criar secrets (inclui MySQL, RabbitMQ e MongoDB Atlas)
     echo "  → Criando secrets..."
     "$SCRIPT_DIR/create-secrets.sh"
 
@@ -84,14 +84,12 @@ apply_k8s_resources() {
     echo "  → Aplicando RabbitMQ..."
     kubectl apply -f "$INFRA_DIR/k8s/shared-rabbitmq-statefulset.yaml"
 
-    # Aplicar MongoDB
-    echo "  → Aplicando MongoDB..."
-    kubectl apply -f "$INFRA_DIR/k8s/pagamento-mongodb-statefulset.yaml"
+    # NOTA: MongoDB agora usa Atlas (provisionado via Terraform)
+    # O secret mongodb-atlas-secret já foi criado pelo create-secrets.sh
 
     # Aguardar pods ficarem prontos
-    echo "  → Aguardando pods ficarem prontos..."
+    echo "  → Aguardando RabbitMQ ficar pronto..."
     kubectl wait --for=condition=ready pod -l app=shared-rabbitmq --timeout=120s || true
-    kubectl wait --for=condition=ready pod -l app=pagamento-mongodb --timeout=120s || true
 
     echo "✅ Recursos Kubernetes aplicados!"
     echo ""
@@ -113,8 +111,19 @@ apply_terraform "ecr"
 # 3. EKS (Kubernetes)
 apply_terraform "kubernetes"
 
-# 4. RDS (Database)
+# 4. RDS (Database MySQL)
 apply_terraform "database"
+
+# 5. MongoDB Atlas
+echo "📦 Aplicando módulo: mongodb-atlas"
+echo "   NOTA: Requer MONGODB_ATLAS_PUBLIC_KEY e MONGODB_ATLAS_PRIVATE_KEY"
+if [ -z "$MONGODB_ATLAS_PUBLIC_KEY" ] || [ -z "$MONGODB_ATLAS_PRIVATE_KEY" ]; then
+    echo "⚠️  Variáveis de ambiente do MongoDB Atlas não encontradas."
+    echo "   Defina MONGODB_ATLAS_PUBLIC_KEY e MONGODB_ATLAS_PRIVATE_KEY"
+    echo "   Pulando módulo mongodb-atlas..."
+else
+    apply_terraform "mongodb-atlas"
+fi
 
 echo "=========================================="
 echo "  FASE 2: Configuração Kubernetes"

@@ -66,9 +66,8 @@ echo "  Clientes: $MYSQL_CLIENTES_HOST (user: $MYSQL_CLIENTES_USER, db: $MYSQL_C
 echo "  Pedidos:  $MYSQL_PEDIDOS_HOST (user: $MYSQL_PEDIDOS_USER, db: $MYSQL_PEDIDOS_DB)"
 echo "  Cozinha:  $MYSQL_COZINHA_HOST (user: $MYSQL_COZINHA_USER, db: $MYSQL_COZINHA_DB)"
 
-# Valores fixos para MongoDB e RabbitMQ (não são gerenciados pelo Terraform)
-MONGO_ROOT_PASSWORD="admin123"
-MONGO_USER_PASSWORD="pagamento123"
+# Valores fixos para RabbitMQ (não são gerenciados pelo Terraform)
+# NOTA: MongoDB agora usa Atlas (gerenciado via create-atlas-secret.sh)
 RABBITMQ_PASSWORD="admin123"
 
 echo ""
@@ -76,8 +75,8 @@ echo "🗑️  Removendo secrets antigos (se existirem)..."
 kubectl delete secret mysql-clientes-secret --ignore-not-found=true
 kubectl delete secret mysql-pedidos-secret --ignore-not-found=true
 kubectl delete secret mysql-cozinha-secret --ignore-not-found=true
-kubectl delete secret mongodb-secret --ignore-not-found=true
 kubectl delete secret rabbitmq-secret --ignore-not-found=true
+# NOTA: mongodb-atlas-secret é gerenciado pelo create-atlas-secret.sh
 
 echo ""
 echo "🔨 Criando novos secrets..."
@@ -109,15 +108,6 @@ kubectl create secret generic mysql-cozinha-secret \
   --from-literal=MYSQL_USER="$MYSQL_COZINHA_USER" \
   --from-literal=MYSQL_PASSWORD="$MYSQL_COZINHA_PASSWORD"
 
-# MongoDB - Pagamento
-echo "  ✓ mongodb-secret"
-kubectl create secret generic mongodb-secret \
-  --from-literal=MONGO_INITDB_ROOT_USERNAME="admin" \
-  --from-literal=MONGO_INITDB_ROOT_PASSWORD="$MONGO_ROOT_PASSWORD" \
-  --from-literal=MONGO_USERNAME="pagamento" \
-  --from-literal=MONGO_PASSWORD="$MONGO_USER_PASSWORD" \
-  --from-literal=MONGO_INITDB_DATABASE="pagamentos"
-
 # RabbitMQ
 echo "  ✓ rabbitmq-secret"
 kubectl create secret generic rabbitmq-secret \
@@ -125,7 +115,13 @@ kubectl create secret generic rabbitmq-secret \
   --from-literal=RABBITMQ_DEFAULT_PASS="$RABBITMQ_PASSWORD"
 
 echo ""
-echo "✅ Todos os secrets foram criados com sucesso!"
+echo "✅ Secrets MySQL e RabbitMQ criados com sucesso!"
+echo ""
+
+# Criar secret do MongoDB Atlas
+echo "🔐 Criando secret do MongoDB Atlas..."
+"$SCRIPT_DIR/create-atlas-secret.sh"
+
 echo ""
 echo "📋 Resumo dos secrets:"
-kubectl get secrets | grep -E "(mysql-|mongodb-|rabbitmq-)"
+kubectl get secrets | grep -E "(mysql-|mongodb-atlas-|rabbitmq-)"
